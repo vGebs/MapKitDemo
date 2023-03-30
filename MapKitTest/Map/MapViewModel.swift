@@ -68,15 +68,11 @@ class MapViewModel: NSObject, ObservableObject {
     }
     
     func search(query: String) {
-        print("Query: \(query)")
         mapKitWrapper.searchLocation(query: query) { [weak self] result in
             switch result {
             case .success(let mapItems):
                 self?.mapItems = mapItems
                 for item in mapItems {
-                    print("Title : \(String(describing: item.placemark.title))")
-                    print("Lat : \(item.placemark.coordinate.latitude)")
-                    print("Lng : \(item.placemark.coordinate.longitude)")
                     self?.highlightRegion(at: item.placemark.coordinate, withSpan: 100)
                 }
             case .failure(let e):
@@ -87,10 +83,53 @@ class MapViewModel: NSObject, ObservableObject {
     }
     
     func highlightRegion(at coordinate: CLLocationCoordinate2D, withSpan span: CLLocationDegrees) {
-        print("jerere")
         let region = MKCoordinateRegion(center: coordinate, latitudinalMeters: span, longitudinalMeters: span)
         highlightedRegion = region
         addHighlightOverlay(for: coordinate)
+    }
+    
+    func estimateTravel(to destination: String) -> String {
+        let group = DispatchGroup()
+        var travelTime: TimeInterval? = nil
+        var destinationCoordinate: CLLocationCoordinate2D? = nil
+        
+        group.enter()
+        mapKitWrapper.geocode(address: destination) { result in
+            switch result {
+            case .success(let placemark):
+                destinationCoordinate = placemark.location?.coordinate
+                group.leave()
+            case .failure(let error):
+                print("Geocoding error: \(error)")
+                group.leave()
+            }
+        }
+        
+        group.wait()
+        
+        if let destinationCoordinate = destinationCoordinate {
+            group.enter()
+            mapKitWrapper.estimateTravelTime(from: currentRegion.center, to: destinationCoordinate, transportType: .automobile) { result in
+                switch result {
+                case .success(let timeInterval):
+                    travelTime = timeInterval
+                    group.leave()
+                case .failure(let error):
+                    print("Estimate travel time error: \(error)")
+                    group.leave()
+                }
+            }
+        } else {
+            return "Not available"
+        }
+        
+        group.wait()
+        
+        if let travelTime = travelTime {
+            return convertTimeIntervalToString(travelTime)
+        } else {
+            return "Not available"
+        }
     }
 }
 
@@ -98,7 +137,7 @@ extension MapViewModel: MKLocalSearchCompleterDelegate {
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
         searchResults = completer.results
     }
-
+    
     func searchCompleter(_ completer: MKLocalSearchCompleter, didUpdateCompletions completions: [MKLocalSearchCompletion]) {
         DispatchQueue.main.async {
             self.searchResults = completions
@@ -114,5 +153,15 @@ extension MapViewModel {
     private func addHighlightOverlay(for coordinate: CLLocationCoordinate2D) {
         let circle = MKCircle(center: coordinate, radius: 500)
         overlays.append(circle)
+    }
+}
+
+extension MapViewModel {
+    private func convertTimeIntervalToString(_ interval: TimeInterval) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.hour, .minute]
+        formatter.unitsStyle = .abbreviated
+        formatter.maximumUnitCount = 1
+        return formatter.string(from: interval) ?? ""
     }
 }

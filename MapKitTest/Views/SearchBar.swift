@@ -61,7 +61,7 @@ struct SearchBar: View {
                 self.isEditing = true
             }
             
-            if isEditing {
+            if self.text != "" {
                 Button(action: {
                     self.isEditing = false
                     self.text = ""
