@@ -26,13 +26,18 @@ struct MapView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: MKMapView, context: Context) {
-        uiView.setRegion(viewModel.region, animated: true)
+        if let highlightedRegion = viewModel.highlightedRegion {
+            uiView.setRegion(highlightedRegion, animated: true)
+            
+        } else {
+            uiView.setRegion(viewModel.currentRegion, animated: true)
+        }
         uiView.showsUserLocation = showsUserLocation
         uiView.addOverlays(viewModel.overlays)
         uiView.cameraZoomRange = MKMapView.CameraZoomRange(minCenterCoordinateDistance: minZoomLevel, maxCenterCoordinateDistance: maxZoomLevel)
         uiView.mapType = viewModel.mapType
     }
-
+    
     class Coordinator: NSObject, MKMapViewDelegate {
         var viewModel: MapViewModel
 
@@ -51,6 +56,12 @@ struct MapView: UIViewRepresentable {
                 let renderer = MKPolylineRenderer(polyline: polyline)
                 renderer.strokeColor = .blue
                 renderer.lineWidth = 3
+                return renderer
+            } else if let circle = overlay as? MKCircle {
+                let renderer = MKCircleRenderer(circle: circle)
+                renderer.fillColor = UIColor.red.withAlphaComponent(0.3)
+                renderer.strokeColor = .red
+                renderer.lineWidth = 2
                 return renderer
             }
             return MKOverlayRenderer()

@@ -9,9 +9,12 @@ import SwiftUI
 import MapKit
 import CoreLocation
 
+let screenHeight = UIScreen.main.bounds.height
+
 struct MapViewContainer: View {
     @StateObject private var viewModel: MapViewModel
-    
+    @State private var cardState: SwipeableCardView<CardView>.CardState = .low // Add this line
+
     init() {
         let initialRegion = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060),
@@ -26,38 +29,9 @@ struct MapViewContainer: View {
             MapView(viewModel: viewModel, showsUserLocation: true, minZoomLevel: 500, maxZoomLevel: 100000000)
                 .edgesIgnoringSafeArea(.all)
             
-            VStack {
-//                Spacer()
-                
-                ZStack {
-                    RoundedRectangle(cornerRadius: 25)
-                        .foregroundColor(.black)
-                        .opacity(0.75)
-                    
-                    VStack {
-                        
-                        SearchBar(text: $viewModel.searchQuery, onEdit: { newVal in
-                            viewModel.updateSearchQuery(query: newVal)
-                        })
-                        .padding(.top)
-                        .padding(.horizontal)
-                        
-                        List(viewModel.searchResults, id: \.self) { result in
-                            Button(action: {
-                                viewModel.search(query: result.title)
-                            }) {
-                                Text(result.title)
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        .cornerRadius(20)
-                        .padding(.horizontal)
-                        .padding(.bottom)
-                    }
-                }
+            SwipeableCardView(maxHeight: screenHeight, cardState: $cardState) {
+                CardView(viewModel: viewModel, cardState: $cardState)
             }
-            .frame(width: 300, height: 300)
-            .padding()
         }
     }
 }

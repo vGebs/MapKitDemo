@@ -11,12 +11,16 @@ import Combine
 
 struct SearchBar: View {
     @Binding var text: String
-    @State private var isEditing = false
+    @FocusState private var isEditing: Bool // Change this line
     var onEdit: (String) -> Void = { _ in }
+    var onFocused: (Bool) -> Void = { _ in } // Add this line
+    var onCancelled: () -> Void = {}
     
-    init(text: Binding<String>, onEdit: @escaping (String) -> Void = { _ in }) {
+    init(text: Binding<String>, onEdit: @escaping (String) -> Void = { _ in }, onFocused: @escaping (Bool) -> Void = {_ in }, onCancelled: @escaping () -> Void = {}) {
         self._text = text
         self.onEdit = onEdit
+        self.onFocused = onFocused
+        self.onCancelled = onCancelled
     }
     
     var body: some View {
@@ -24,6 +28,10 @@ struct SearchBar: View {
             TextField("Search...", text: $text, onEditingChanged: { isEditing in
                 self.isEditing = isEditing
             })
+            .focused($isEditing) // Bind the focus state to isEditing
+            .onChange(of: isEditing) { newValue in
+                onFocused(newValue) // Call the onFocused closure with the focus state
+            }
             .onChange(of: text) { newValue in
                 onEdit(newValue)
             }
@@ -58,6 +66,7 @@ struct SearchBar: View {
                     self.isEditing = false
                     self.text = ""
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    self.onCancelled()
                 }) {
                     Text("Cancel")
                 }
